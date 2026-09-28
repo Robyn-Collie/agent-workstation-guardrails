@@ -20,5 +20,9 @@
   },
   "dependencies": {
     "tslib": "^2.3.0"
+  },
+  "description": "Audits a repository against the agent workstation guardrail standard.",
+  "bin": {
+    "guardrail-check": "./dist/cli.js"
   }
 }
