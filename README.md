@@ -17,6 +17,12 @@ Written from scratch on personal time with public tools and public or synthetic 
 - `secret-scan`: a zero-dependency Python secret scanner (32 tests, including one that scans this repo
   and must find nothing).
 
+## Measured
+
+A full `nx run-many -t lint typecheck test` takes 6.4 s cold and 0.9 s when nothing changed
+(median of 5 and 10 runs, one 4-CPU Linux container). Method, spread and limits:
+[docs/measurements.md](docs/measurements.md).
+
 ## Quick start
 
 Requires Node 22+, npm 11, and Python 3.9+ with `pytest` on the `PATH`. npm 11 is needed because npm 10's installer crashed while resolving this workspace's dependencies. See [docs/notes/story-1.1-nx-workspace.md](docs/notes/story-1.1-nx-workspace.md).
