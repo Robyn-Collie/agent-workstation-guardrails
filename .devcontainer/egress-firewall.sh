@@ -65,6 +65,7 @@ while read -r host; do
   fi
   if [ -n "$v4" ]; then nft add element inet agent_egress allow_v4 "{ $v4 }"; fi
   if [ -n "$v6" ]; then nft add element inet agent_egress allow_v6 "{ $v6 }"; fi
+  log "$host -> ${v4:-} ${v6:-}"
   hosts=$((hosts + 1))
 done < <(sed -e 's/#.*//' -e 's/[[:space:]]//g' "$ALLOWLIST" | grep -v '^$')
 
@@ -72,6 +73,23 @@ done < <(sed -e 's/#.*//' -e 's/[[:space:]]//g' "$ALLOWLIST" | grep -v '^$')
 if [ "$hosts" -eq 0 ]; then
   log "allowlist $ALLOWLIST has no hosts"
   exit 1
+fi
+
+# Step 3: GitHub serves the same name from several addresses, so one lookup can miss the
+# address the next request uses. (The first CI run saw api.github.com refused a second
+# after it was allowed.) GitHub publishes its ranges at api.github.com/meta; add
+# the web, api and git ranges. --resolve pins the request to the address just allowed.
+# If the fetch fails (for example GitHub's unauthenticated rate limit), keep going with
+# the looked-up addresses and say so, rather than refuse to start.
+gh_ip=$(getent ahostsv4 api.github.com | awk 'NR == 1 {print $1}' || true)
+if meta=$(curl -fsS --max-time 10 --resolve "api.github.com:443:$gh_ip" https://api.github.com/meta); then
+  gh4=$(jq -r '(.web + .api + .git)[] | select(contains(":") | not)' <<<"$meta" | sort -u | paste -sd, -)
+  gh6=$(jq -r '(.web + .api + .git)[] | select(contains(":"))' <<<"$meta" | sort -u | paste -sd, -)
+  if [ -n "$gh4" ]; then nft add element inet agent_egress allow_v4 "{ $gh4 }"; fi
+  if [ -n "$gh6" ]; then nft add element inet agent_egress allow_v6 "{ $gh6 }"; fi
+  log "added GitHub's published ranges ($(tr ',' '\n' <<<"$gh4,$gh6" | grep -c .) CIDRs)"
+else
+  log "WARNING: could not fetch GitHub's ranges; GitHub may fail when its address rotates"
 fi
 
 touch "$READY"

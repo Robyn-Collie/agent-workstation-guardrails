@@ -26,7 +26,12 @@ done
 
 # 3. Allowlisted destinations work.
 for url in https://registry.npmjs.org/ https://pypi.org/simple/ https://api.github.com/zen; do
-  if reachable "$url"; then pass "$url is reachable"; else fail "$url is blocked (should be allowed)"; fi
+  if reachable "$url"; then
+    pass "$url is reachable"
+  else
+    host=${url#https://}; host=${host%%/*}
+    fail "$url is blocked (should be allowed; $host resolves to $(getent ahosts "$host" | awk '{print $1}' | sort -u | paste -sd' ' -))"
+  fi
 done
 
 echo
