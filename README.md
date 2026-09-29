@@ -19,12 +19,12 @@ Written from scratch on personal time with public tools and public or synthetic 
 
 ## Quick start
 
-Requires Node 22+ and npm 11 (npm 10's installer crashed while resolving this workspace's dependencies;
-see [docs/notes/story-1.1-nx-workspace.md](docs/notes/story-1.1-nx-workspace.md)).
+Requires Node 22+, npm 11, and Python 3.9+ with `pytest` on the `PATH`. npm 11 is needed because npm 10's installer crashed while resolving this workspace's dependencies. See [docs/notes/story-1.1-nx-workspace.md](docs/notes/story-1.1-nx-workspace.md).
 
 ```sh
 npm install
 npx nx graph                               # see the projects and how they depend on each other
-npx nx run-many -t lint typecheck test     # run every check on every TypeScript project
-python3 -m pytest packages/secret-scan     # secret-scan tests (needs pytest; Nx wiring is Story 1.4)
+npx nx run-many -t lint typecheck test     # every check on every project, TypeScript and Python
+npx nx affected -t lint typecheck test     # only the projects your branch changed
+npx nx run secret-scan:scan-repo           # scan every tracked file for secrets (never cached)
 ```
