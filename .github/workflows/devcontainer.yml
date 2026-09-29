@@ -1,0 +1,42 @@
+# Builds the real devcontainer on a GitHub-hosted runner and proves the sandbox checks
+# pass inside it, with fake host credentials planted outside to show they don't leak in.
+name: devcontainer
+
+on:
+  pull_request:
+    paths: ['.devcontainer/**', '.github/workflows/devcontainer.yml']
+  push:
+    branches: [main]
+    paths: ['.devcontainer/**', '.github/workflows/devcontainer.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Plant fake host credentials the container must not see
+        run: |
+          mkdir -p ~/.ssh ~/.aws
+          echo "FAKE-not-a-key" > ~/.aws/credentials
+          echo "FAKE-not-a-key" > ~/.ssh/id_fake
+
+      - name: Build and start the devcontainer
+        env:
+          AWS_ACCESS_KEY_ID: FAKE-not-a-key
+          SSH_AUTH_SOCK: /tmp/fake-agent.sock
+        run: |
+          start=$(date +%s)
+          npx --yes @devcontainers/cli@0.89.0 up --workspace-folder .
+          echo "devcontainer up took $(( $(date +%s) - start ))s (build + postCreate)"
+
+      - name: Sandbox checks
+        run: npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . bash .devcontainer/verify-sandbox.sh
+
+      - name: Toolchain works inside the sandbox
+        run: npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . npx nx run-many -t lint typecheck test
