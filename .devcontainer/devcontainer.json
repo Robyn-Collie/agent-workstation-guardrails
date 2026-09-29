@@ -1,0 +1,34 @@
+// Sandboxed workspace for a coding agent. Every setting here maps to docs/brief.md:
+// non-root user, no host credentials, workspace-only mount.
+{
+  "name": "agent-workstation-guardrails",
+  "build": { "dockerfile": "Dockerfile" },
+
+  // Run the container and every tool in it as the unprivileged "node" user.
+  "containerUser": "node",
+  "remoteUser": "node",
+
+  // Mount only this repo. No "mounts" entries: nothing else from the host (no ~/.ssh,
+  // ~/.aws, ~/.config, Docker socket) is visible inside.
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+
+  // Drop all Linux capabilities and forbid gaining new privileges (setuid binaries like
+  // sudo stop working even if someone reinstalls them).
+  "runArgs": ["--cap-drop=ALL", "--security-opt=no-new-privileges"],
+
+  // Project dependencies, installed inside the container, never copied from the host.
+  "postCreateCommand": "npm ci && python3 -m venv .venv && .venv/bin/pip install --quiet pytest==9.1.1",
+  "remoteEnv": { "PATH": "/workspace/.venv/bin:${containerEnv:PATH}" },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "nrwl.angular-console",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "ms-python.python"
+      ]
+    }
+  }
+}
