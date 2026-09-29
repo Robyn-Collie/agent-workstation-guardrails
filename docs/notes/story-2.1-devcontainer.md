@@ -34,6 +34,12 @@ that environment blocks the Debian package mirrors, so the local test build skip
 package-install lines (python3-venv, npm 11). None of the checks depend on them. The full image is built
 by the CI workflow.
 
+**Full image in CI (2026-09-29, GitHub-hosted `ubuntu-latest`,
+[run 36599744460](https://github.com/Robyn-Collie/agent-workstation-guardrails/actions/runs/36599744460)):**
+the real Dockerfile built and started in 68 s including `npm ci` and pytest install; all 18 checks passed
+with fake credentials planted on the runner; `nx run-many -t lint typecheck test` passed inside the
+container (5 tasks, cold cache, 3.2 s Nx run duration).
+
 **Negative controls:** the same script, run in unsafe containers, fails as it should:
 
 - Base image as root, with `~/.aws` mounted and fake credentials in the environment: 8 checks failed.
