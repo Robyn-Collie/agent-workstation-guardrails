@@ -12,8 +12,10 @@ Written from scratch on personal time with public tools and public or synthetic 
 
 ## What works today
 
-- An Nx workspace (TypeScript, strict `tsconfig`, ESLint, Prettier, Vitest) with one project,
-  `guardrail-check`, which is still a placeholder.
+- An Nx workspace (TypeScript, strict `tsconfig`, ESLint, Prettier, Vitest).
+- `guardrail-check`: a CLI that audits a repo against the standard (22 tests).
+- `secret-scan`: a zero-dependency Python secret scanner (32 tests, including one that scans this repo
+  and must find nothing).
 
 ## Quick start
 
@@ -23,5 +25,6 @@ see [docs/notes/story-1.1-nx-workspace.md](docs/notes/story-1.1-nx-workspace.md)
 ```sh
 npm install
 npx nx graph                               # see the projects and how they depend on each other
-npx nx run-many -t lint typecheck test     # run every check on every project
+npx nx run-many -t lint typecheck test     # run every check on every TypeScript project
+python3 -m pytest packages/secret-scan     # secret-scan tests (needs pytest; Nx wiring is Story 1.4)
 ```
