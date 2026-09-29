@@ -16,6 +16,8 @@ Written from scratch on personal time with public tools and public or synthetic 
 - `guardrail-check`: a CLI that audits a repo against the standard (22 tests).
 - `secret-scan`: a zero-dependency Python secret scanner (32 tests, including one that scans this repo
   and must find nothing).
+- A devcontainer for the agent: non-root, no sudo, no Linux capabilities, only the repo mounted.
+  `.devcontainer/verify-sandbox.sh` proves it with 18 checks, run in CI on every change.
 
 ## Measured
 

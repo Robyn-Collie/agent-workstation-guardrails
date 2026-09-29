@@ -78,7 +78,7 @@ def scenarios(runs: int) -> list[Scenario]:
             "guardrail-check on this repo",
             ["node", "apps/guardrail-check/dist/cli.js", "."],
             runs * 2,
-            expect_exit=1,  # 3 checks fail until Epic 2 adds the devcontainer, hooks and AGENTS.md
+            expect_exit=1,  # 2 checks fail until Epic 2 adds the hooks and AGENTS.md
         ),
     ]
 
