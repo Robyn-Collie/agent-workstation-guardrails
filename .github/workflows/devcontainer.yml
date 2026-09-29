@@ -32,11 +32,28 @@ jobs:
           SSH_AUTH_SOCK: /tmp/fake-agent.sock
         run: |
           start=$(date +%s)
-          npx --yes @devcontainers/cli@0.89.0 up --workspace-folder .
+          npx --yes @devcontainers/cli@0.89.0 up --workspace-folder . | tee up.json
           echo "devcontainer up took $(( $(date +%s) - start ))s (build + postCreate)"
+          echo "CONTAINER_ID=$(tail -n 1 up.json | jq -r .containerId)" >> "$GITHUB_ENV"
+
+      - name: Firewall load time (from the container log)
+        run: docker logs "$CONTAINER_ID" 2>&1 | grep 'egress-firewall:'
 
       - name: Sandbox checks
         run: npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . bash .devcontainer/verify-sandbox.sh
+
+      - name: Egress checks
+        run: npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . bash .devcontainer/verify-egress.sh
+
+      # Negative control: the same checks in the base image, which has no firewall, must fail.
+      # A test that cannot fail proves nothing.
+      - name: Egress checks fail without the firewall
+        run: |
+          base=$(sed -n 's/^FROM //p' .devcontainer/Dockerfile)
+          if docker run --rm -v "$PWD/.devcontainer:/c:ro" --user node --entrypoint bash "$base" /c/verify-egress.sh; then
+            echo "verify-egress.sh passed in a container with no firewall"; exit 1
+          fi
+          echo "verify-egress.sh failed without the firewall, as expected"
 
       - name: Toolchain works inside the sandbox
         run: npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . npx nx run-many -t lint typecheck test
