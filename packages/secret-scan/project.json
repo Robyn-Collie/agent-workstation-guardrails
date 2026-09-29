@@ -1,0 +1,35 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "secret-scan",
+  "projectType": "library",
+  "sourceRoot": "packages/secret-scan/secret_scan",
+  "tags": ["lang:python"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 -m pytest -q -m \"not repo_scan\"",
+        "cwd": "{projectRoot}"
+      },
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/**/*.py",
+        "{projectRoot}/pyproject.toml",
+        {
+          "runtime": "python3 --version"
+        },
+        {
+          "runtime": "python3 -m pytest --version"
+        }
+      ]
+    },
+    "scan-repo": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python3 -m secret_scan --root ../.. --tracked",
+        "cwd": "{projectRoot}"
+      },
+      "cache": false
+    }
+  }
+}

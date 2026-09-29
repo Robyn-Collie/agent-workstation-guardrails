@@ -2,6 +2,7 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
 from fakes import FAKE_SECRETS
 
 from secret_scan.cli import main
@@ -49,5 +50,6 @@ def test_allowlist_file_at_root_is_used(tmp_path: Path):
     assert main(["--root", str(tmp_path)]) == 0
 
 
+@pytest.mark.repo_scan
 def test_no_false_positives_on_this_repo():
     assert main(["--root", str(REPO_ROOT), "--tracked"]) == 0
