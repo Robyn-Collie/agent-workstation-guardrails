@@ -13,3 +13,4 @@ secret-scan = "secret_scan.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["repo_scan: scans the whole repository; run by the uncached scan-repo target"]
