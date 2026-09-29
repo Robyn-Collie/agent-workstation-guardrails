@@ -25,7 +25,7 @@ projects) have nothing to do here. A guardrail repo should also keep its own sup
 
 - Cache inputs are declared by hand in `packages/secret-scan/project.json`. If they're wrong, Nx
   replays stale results. They include the Python and pytest versions (as `runtime` inputs), so
-  upgrading either reruns the tests. Those two version checks cost about 0.2 s each per run.
+  upgrading either reruns the tests. Measured cost per run: about 0.2 s for the pytest version check and under 0.01 s for Python's (Story 1.5).
 - The test that scans the whole repo can't be cached against this package's files alone (a secret
   added anywhere else must fail it). It moved to a separate `scan-repo` target with `cache: false`.
 - If the repo grows a second Python project that imports this one, revisit: that's where
