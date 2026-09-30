@@ -62,3 +62,16 @@ Wall-clock time, measured from outside the process.
   Nx's own "Run duration", which excludes Nx's startup and project graph time. The wall-clock numbers
   here are what a developer actually waits for.
 - The daemon hung once in this container during Story 1.1; it worked in every run here.
+
+## 2026-09-29: egress firewall load time (Story 2.2)
+
+**Environment:** GitHub-hosted `ubuntu-latest` runner, measured by the firewall script itself
+(`date +%s%N` at start and end) and printed to the container log. One run each, so treat these as a
+rough size, not a median.
+
+| Firewall version                                   | Load time | Run                                                                                                  |
+| -------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------- |
+| 9 hosts looked up                                  | 166 ms    | [36601883071](https://github.com/Robyn-Collie/agent-workstation-guardrails/actions/runs/36601883071) |
+| 9 hosts looked up, plus GitHub's ranges (80 CIDRs) | 417 ms    | [36602350548](https://github.com/Robyn-Collie/agent-workstation-guardrails/actions/runs/36602350548) |
+
+It runs once per container start, before any tool, so it adds to startup, not to the inner loop.

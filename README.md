@@ -18,12 +18,17 @@ Written from scratch on personal time with public tools and public or synthetic 
   and must find nothing).
 - A devcontainer for the agent: non-root, no sudo, no Linux capabilities, only the repo mounted.
   `.devcontainer/verify-sandbox.sh` proves it with 18 checks, run in CI on every change.
+- A default-deny egress firewall in that devcontainer: outbound HTTPS only to npm, PyPI, GitHub and the
+  model API. `.devcontainer/verify-egress.sh` proves a blocked domain is refused, an allowed one works,
+  and the agent can't change the rules; CI also runs it without the firewall and requires it to fail.
+  Designed and tested with the `devcontainer` CLI; not yet tested in VS Code.
 
 ## Measured
 
 A full `nx run-many -t lint typecheck test` takes 6.4 s cold and 0.9 s when nothing changed
 (median of 5 and 10 runs, one 4-CPU Linux container). Method, spread and limits:
-[docs/measurements.md](docs/measurements.md).
+[docs/measurements.md](docs/measurements.md). Loading the egress firewall at container start took 0.4 s
+in CI (one run).
 
 ## Quick start
 

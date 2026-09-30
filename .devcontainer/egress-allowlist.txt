@@ -1,0 +1,18 @@
+# Outbound HTTPS (port 443) is allowed to these hosts only. Everything else is refused.
+# One hostname per line; "#" starts a comment. Hosts are resolved once, at container
+# start, so an edit here takes effect on the next rebuild or restart.
+
+# Package registries: npm ci and pip install run inside the container.
+registry.npmjs.org
+pypi.org
+files.pythonhosted.org
+
+# GitHub over HTTPS (clone, fetch, push, API, release downloads). SSH (port 22) stays closed.
+github.com
+api.github.com
+codeload.github.com
+objects.githubusercontent.com
+raw.githubusercontent.com
+
+# The model API the coding agent talks to.
+api.anthropic.com
