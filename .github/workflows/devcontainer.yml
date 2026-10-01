@@ -26,6 +26,14 @@ jobs:
           echo "FAKE-not-a-key" > ~/.aws/credentials
           echo "FAKE-not-a-key" > ~/.ssh/id_fake
 
+      # A throwaway value, new every run, masked in the logs. Being random, it can only turn
+      # up in the image or container if the setup put it there.
+      - name: Make a fake model API key for this run
+        run: |
+          key="fake-$(openssl rand -hex 16)"
+          echo "::add-mask::$key"
+          echo "ANTHROPIC_API_KEY=$key" >> "$GITHUB_ENV"
+
       - name: Build and start the devcontainer
         env:
           AWS_ACCESS_KEY_ID: FAKE-not-a-key
@@ -41,6 +49,33 @@ jobs:
 
       - name: Sandbox checks
         run: npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . bash .devcontainer/verify-sandbox.sh
+
+      - name: Model API key reaches the agent at run time
+        run: |
+          got=$(npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . printenv ANTHROPIC_API_KEY)
+          if [ "$got" != "$ANTHROPIC_API_KEY" ]; then echo "key did not reach the container"; exit 1; fi
+          echo "key reached the container"
+
+      - name: Model API key is not stored in the image or container
+        run: |
+          start=$(date +%s)
+          SECRET_VALUE="$ANTHROPIC_API_KEY" bash .devcontainer/check-no-baked-secret.sh \
+            "$(docker inspect -f '{{.Image}}' "$CONTAINER_ID")" "$CONTAINER_ID"
+          echo "check took $(( $(date +%s) - start ))s"
+
+      # Negative control: an image that copies the key in and deletes it in the next layer.
+      # The final filesystem is clean, so only the per-layer scan can catch it.
+      - name: Baked-in key is caught even after it is deleted
+        run: |
+          dir=$(mktemp -d)
+          printf '%s' "$ANTHROPIC_API_KEY" > "$dir/key.txt"
+          base=$(sed -n 's/^FROM //p' .devcontainer/Dockerfile)
+          printf 'FROM %s\nCOPY key.txt /tmp/key.txt\nRUN rm /tmp/key.txt\n' "$base" > "$dir/Dockerfile"
+          docker build -q -t baked-secret-control "$dir"
+          if SECRET_VALUE="$ANTHROPIC_API_KEY" bash .devcontainer/check-no-baked-secret.sh baked-secret-control; then
+            echo "check-no-baked-secret.sh missed a key in a deleted layer"; exit 1
+          fi
+          echo "check-no-baked-secret.sh caught the deleted key, as expected"
 
       - name: Egress checks
         run: npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . bash .devcontainer/verify-egress.sh

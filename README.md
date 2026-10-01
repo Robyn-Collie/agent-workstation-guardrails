@@ -22,6 +22,11 @@ Written from scratch on personal time with public tools and public or synthetic 
   model API. `.devcontainer/verify-egress.sh` proves a blocked domain is refused, an allowed one works,
   and the agent can't change the rules; CI also runs it without the firewall and requires it to fail.
   Designed and tested with the `devcontainer` CLI; not yet tested in VS Code.
+- The agent's model API key is injected at run time, never stored in the image or container.
+  `.devcontainer/check-no-baked-secret.sh` searches the image's history, metadata and every layer,
+  plus the container, for the key; CI runs it with a random fake key, and also on an image that hides
+  the key in a deleted layer, which it must catch. The standard behind all of this is in
+  [docs/standard.md](docs/standard.md).
 
 ## Measured
 

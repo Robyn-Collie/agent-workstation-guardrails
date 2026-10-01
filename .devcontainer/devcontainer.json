@@ -34,7 +34,14 @@
 
   // Project dependencies, installed inside the container, never copied from the host.
   "postCreateCommand": "npm ci && python3 -m venv .venv && .venv/bin/pip install --quiet pytest==9.1.1",
-  "remoteEnv": { "PATH": "/workspace/.venv/bin:${containerEnv:PATH}" },
+  "remoteEnv": {
+    "PATH": "/workspace/.venv/bin:${containerEnv:PATH}",
+    // The agent's model API key, read from the host's environment each time a command
+    // starts in the container. Never "containerEnv" or a build arg: those store the value
+    // in the container's or image's metadata. Set it on the host from a secret store; see
+    // docs/standard.md. Empty if the host doesn't set it.
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  },
 
   "customizations": {
     "vscode": {

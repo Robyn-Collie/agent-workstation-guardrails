@@ -75,3 +75,17 @@ rough size, not a median.
 | 9 hosts looked up, plus GitHub's ranges (80 CIDRs) | 417 ms    | [36602350548](https://github.com/Robyn-Collie/agent-workstation-guardrails/actions/runs/36602350548) |
 
 It runs once per container start, before any tool, so it adds to startup, not to the inner loop.
+
+## 2026-09-30: baked-secret check time (Story 2.3)
+
+`check-no-baked-secret.sh` on the devcontainer image (about 600 MB saved) and its running container.
+One run each.
+
+| Where                              | Version                                 | Time                                                                                                            |
+| ---------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Build container (4 CPUs)           | `tar` lists and extracts every layer    | 203 s                                                                                                           |
+| Build container (4 CPUs)           | Search raw layers, decompress if needed | 51 s                                                                                                            |
+| GitHub-hosted `ubuntu-latest` (CI) | Search raw layers, decompress if needed | 28 s ([run 36753700515](https://github.com/Robyn-Collie/agent-workstation-guardrails/actions/runs/36753700515)) |
+
+In the build container, `docker save` alone took 19 s and `docker export` 18 s, so most of the time
+left is copying the image, not searching it. It runs in CI, not on every commit.

@@ -19,8 +19,11 @@ done
 if [ -S /var/run/docker.sock ]; then fail "host Docker socket is mounted"; else pass "no Docker socket"; fi
 
 # 3. No credentials in the environment and no forwarded SSH agent.
-leaked=$(env | cut -d= -f1 | grep -E '^(AWS_|AZURE_|GOOGLE_APPLICATION_CREDENTIALS|GITHUB_TOKEN|GH_TOKEN|ANTHROPIC_API_KEY|OPENAI_API_KEY|NPM_TOKEN)' || true)
-if [ -z "$leaked" ]; then pass "no credential environment variables"; else fail "credential variables set: $(echo "$leaked" | tr '\n' ' ')"; fi
+# The one credential the agent is meant to have is its model API key, injected at run time
+# (Story 2.3, docs/standard.md). Any other credential variable is a leak.
+leaked=$(env | cut -d= -f1 | grep -E '^(AWS_|AZURE_|GOOGLE_APPLICATION_CREDENTIALS|GITHUB_TOKEN|GH_TOKEN|OPENAI_API_KEY|NPM_TOKEN)' || true)
+if [ -z "$leaked" ]; then pass "no credential environment variables besides the model API key"; else fail "credential variables set: $(echo "$leaked" | tr '\n' ' ')"; fi
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then echo "[INFO] model API key is set (injected at run time)"; else echo "[INFO] model API key is not set"; fi
 if [ -z "${SSH_AUTH_SOCK:-}" ]; then pass "no SSH agent forwarded"; else fail "SSH agent forwarded (SSH_AUTH_SOCK=$SSH_AUTH_SOCK)"; fi
 helper=$(git config --get credential.helper 2>/dev/null || true)
 if [ -z "$helper" ]; then pass "no git credential helper"; else fail "git credential helper configured: $helper"; fi
