@@ -14,11 +14,14 @@ the environment they were measured in.
 from __future__ import annotations
 
 import argparse
+import atexit
 import os
 import platform
+import shutil
 import statistics
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -48,6 +51,44 @@ def remove_probe() -> None:
     PROBE.unlink(missing_ok=True)
 
 
+class HookRepo:
+    """A throwaway repo using this project's git hooks, with a bare remote to push to.
+
+    Each run commits or pushes one new small file, so the hook has real work to do.
+    Timing the same command with --no-verify (hooks skipped) gives the hook's cost.
+    """
+
+    def __init__(self) -> None:
+        self.base = Path(tempfile.mkdtemp(prefix="measure-hooks-"))
+        atexit.register(shutil.rmtree, self.base, ignore_errors=True)
+        self.path = self.base / "work"
+        remote = self.base / "remote.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
+        subprocess.run(["git", "init", "-q", "-b", "main", str(self.path)], check=True)
+        for key, value in [
+            ("user.name", "Measure"),
+            ("user.email", "measure@example.invalid"),
+            ("core.hooksPath", str(ROOT / ".githooks")),
+        ]:
+            self.git("config", key, value)
+        self.git("remote", "add", "origin", str(remote))
+        self.stage_new_file()
+        self.git("commit", "-q", "--no-verify", "-m", "initial")
+        self.git("push", "-q", "--no-verify", "origin", "main")
+
+    def git(self, *args: str) -> None:
+        subprocess.run(["git", *args], cwd=self.path, check=True, capture_output=True)
+
+    def stage_new_file(self) -> None:
+        name = f"file_{uuid.uuid4().hex[:8]}.py"
+        (self.path / name).write_text(f"print({name!r})\n")
+        self.git("add", name)
+
+    def commit_new_file(self) -> None:
+        self.stage_new_file()
+        self.git("commit", "-q", "--no-verify", "-m", "change")
+
+
 @dataclass
 class Scenario:
     name: str
@@ -57,11 +98,15 @@ class Scenario:
     after_all: Optional[Callable[[], None]] = None
     expect_exit: int = 0
     warmup: bool = True
+    cwd: Optional[Path] = None
     times: list[float] = field(default_factory=list)
 
 
 def scenarios(runs: int) -> list[Scenario]:
     scan = [sys.executable, "-m", "secret_scan", "--root", "../.."]
+    hooks = HookRepo()
+    commit = ["git", "commit", "-q", "-m", "change"]
+    push = ["git", "push", "-q", "origin", "main"]
     return [
         Scenario("All checks, cold (cache cleared before each run)", ALL_CHECKS, runs, before_each=nx_reset, warmup=False),
         Scenario("All checks, fully cached", ALL_CHECKS, runs * 2),
@@ -74,17 +119,21 @@ def scenarios(runs: int) -> list[Scenario]:
         ),
         Scenario("secret-scan, every tracked file", [*scan, "--tracked"], runs * 2),
         Scenario("secret-scan, staged files (pre-commit)", [*scan, "--staged"], runs * 2),
+        Scenario("git commit, one new file, pre-commit hook", commit, runs * 2, before_each=hooks.stage_new_file, warmup=False, cwd=hooks.path),
+        Scenario("git commit, one new file, hooks skipped", [*commit, "--no-verify"], runs * 2, before_each=hooks.stage_new_file, warmup=False, cwd=hooks.path),
+        Scenario("git push, one new commit, pre-push hook", push, runs * 2, before_each=hooks.commit_new_file, warmup=False, cwd=hooks.path),
+        Scenario("git push, one new commit, hooks skipped", [*push, "--no-verify"], runs * 2, before_each=hooks.commit_new_file, warmup=False, cwd=hooks.path),
         Scenario(
             "guardrail-check on this repo",
             ["node", "apps/guardrail-check/dist/cli.js", "."],
             runs * 2,
-            expect_exit=1,  # 2 checks fail until Epic 2 adds the hooks and AGENTS.md
+            expect_exit=1,  # agents-md fails until the repo has an AGENTS.md
         ),
     ]
 
 
 def run(scenario: Scenario) -> None:
-    cwd = ROOT / "packages" / "secret-scan" if "secret_scan" in scenario.command else ROOT
+    cwd = scenario.cwd or (ROOT / "packages" / "secret-scan" if "secret_scan" in scenario.command else ROOT)
     if scenario.warmup:
         subprocess.run(scenario.command, cwd=cwd, capture_output=True)
     try:

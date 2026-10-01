@@ -14,6 +14,7 @@
       "cache": true,
       "inputs": [
         "{projectRoot}/**/*.py",
+        "{workspaceRoot}/.githooks/*",
         "{projectRoot}/pyproject.toml",
         {
           "runtime": "python3 --version"

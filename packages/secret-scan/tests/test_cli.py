@@ -1,3 +1,4 @@
+import io
 import json
 import subprocess
 from pathlib import Path
@@ -53,3 +54,47 @@ def test_allowlist_file_at_root_is_used(tmp_path: Path):
 @pytest.mark.repo_scan
 def test_no_false_positives_on_this_repo():
     assert main(["--root", str(REPO_ROOT), "--tracked"]) == 0
+
+
+def _commit(repo: Path, name: str, text: str, message: str) -> str:
+    (repo / name).write_text(text)
+    subprocess.run(["git", "add", name], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=T", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", message],
+        cwd=repo,
+        check=True,
+    )
+    return subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True).stdout.strip()
+
+
+ZERO = "0" * 40
+
+
+def test_pre_push_scans_only_the_commits_being_pushed(git_repo: Path, capsys):
+    old = _commit(git_repo, "old.py", f"KEY = '{AWS}'\n", "already on the remote")
+    new = _commit(git_repo, "new.py", "print('hi')\n", "being pushed")
+    stdin = io.StringIO(f"refs/heads/main {new} refs/heads/main {old}\n")
+    assert main(["--root", str(git_repo), "--pre-push"], stdin=stdin) == 0
+    assert "in 1 file(s)" in capsys.readouterr().err
+
+
+def test_pre_push_new_branch_scans_history_and_names_the_commit(git_repo: Path, capsys):
+    bad = _commit(git_repo, "settings.py", f"KEY = '{AWS}'\n", "add key")
+    head = _commit(git_repo, "settings.py", "KEY = None\n", "remove key")
+    stdin = io.StringIO(f"refs/heads/main {head} refs/heads/main {ZERO}\n")
+    assert main(["--root", str(git_repo), "--pre-push"], stdin=stdin) == 1
+    assert f"settings.py (commit {bad[:8]})" in capsys.readouterr().out
+
+
+def test_pre_push_branch_deletion_sends_nothing(git_repo: Path):
+    _commit(git_repo, "settings.py", f"KEY = '{AWS}'\n", "add key")
+    stdin = io.StringIO(f"(delete) {ZERO} refs/heads/old {ZERO}\n")
+    assert main(["--root", str(git_repo), "--pre-push"], stdin=stdin) == 0
+
+
+def test_pre_push_allowlist_still_matches_the_bare_path(git_repo: Path):
+    (git_repo / ".secret-scan-allowlist").write_text("fixtures/*\n")
+    (git_repo / "fixtures").mkdir()
+    head = _commit(git_repo, "fixtures/keys.txt", AWS, "fixture")
+    stdin = io.StringIO(f"refs/heads/main {head} refs/heads/main {ZERO}\n")
+    assert main(["--root", str(git_repo), "--pre-push"], stdin=stdin) == 0
