@@ -89,3 +89,24 @@ One run each.
 
 In the build container, `docker save` alone took 19 s and `docker export` 18 s, so most of the time
 left is copying the image, not searching it. It runs in CI, not on every commit.
+
+## 2026-10-01: git hook cost (Story 2.4)
+
+`python3 scripts/measure.py --runs 5` in the same build container as the baseline (4 CPUs). The hook
+scenarios use a throwaway repo with this project's hooks; each run commits or pushes one new small file.
+Timing the same command with `--no-verify` (hooks skipped) shows what the hook adds.
+
+| Scenario                                    | Runs | Median (s) | Min (s) | Max (s) |
+| ------------------------------------------- | ---: | ---------: | ------: | ------: |
+| `git commit`, one new file, pre-commit hook |   10 |       0.19 |    0.17 |    0.22 |
+| `git commit`, one new file, hooks skipped   |   10 |       0.10 |    0.09 |    0.12 |
+| `git push`, one new commit, pre-push hook   |   10 |       0.12 |    0.11 |    0.29 |
+| `git push`, one new commit, hooks skipped   |   10 |       0.04 |    0.04 |    0.04 |
+
+**The hooks add about 0.09 s to a commit and 0.08 s to a push** (difference of medians), mostly
+Python start-up. The pre-push time grows with the number of commits pushed, since it scans every file
+each commit changed; this measures one.
+
+The same run re-measured the inner loop: all checks 6.91 s cold and 0.73 s cached. One changed Python
+file now takes 5.17 s, up from 2.94 s, because `secret-scan:test` grew from 32 to 39 tests and the new
+hook tests create real git repos.

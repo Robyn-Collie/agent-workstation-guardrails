@@ -14,8 +14,11 @@ Written from scratch on personal time with public tools and public or synthetic 
 
 - An Nx workspace (TypeScript, strict `tsconfig`, ESLint, Prettier, Vitest).
 - `guardrail-check`: a CLI that audits a repo against the standard (22 tests).
-- `secret-scan`: a zero-dependency Python secret scanner (32 tests, including one that scans this repo
+- `secret-scan`: a zero-dependency Python secret scanner (39 tests, including one that scans this repo
   and must find nothing).
+- Git hooks that run it before code leaves the machine: pre-commit scans what's staged, pre-push scans
+  every commit being pushed. `npm install` turns them on. Tests show a fake secret blocked at both;
+  they add about 0.09 s per commit and 0.08 s per push.
 - A devcontainer for the agent: non-root, no sudo, no Linux capabilities, only the repo mounted.
   `.devcontainer/verify-sandbox.sh` proves it with 18 checks, run in CI on every change.
 - A default-deny egress firewall in that devcontainer: outbound HTTPS only to npm, PyPI, GitHub and the

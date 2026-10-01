@@ -98,9 +98,14 @@ revoke, with a spending limit, used for nothing else. Anyone who controls the ho
 
 A zero-dependency scanner runs as a pre-commit hook and again as a pre-push hook.
 
-- **Here:** the scanner exists (`packages/secret-scan`), and `npx nx run secret-scan:scan-repo` scans
-  every tracked file.
-- **Not yet:** the hooks. That's Story 2.4.
+- **Here:** `.githooks/pre-commit` scans what's staged; `.githooks/pre-push` scans every commit being
+  pushed, so a secret committed and deleted later is still caught. `npm install` turns them on.
+- **Proof:** `packages/secret-scan/tests/test_hooks.py` runs the real hooks in a throwaway repo: a
+  fake secret is blocked at commit and at push, and clean work goes through. The hooks add about
+  0.09 s to a commit and 0.08 s to a push ([measurements](measurements.md),
+  [Story 2.4 notes](notes/story-2.4-secret-scan-hooks.md)).
+- **Limit:** anyone can skip a hook with `--no-verify`. The pre-push hook catches a skipped commit
+  hook, but skipping both is still possible; a server-side check is the backstop (Story 3.2).
 
 ## 5. One workspace per agent
 
