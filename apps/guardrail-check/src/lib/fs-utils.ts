@@ -16,6 +16,14 @@ export function markdownFiles(dir: string): string[] {
     .map((name) => join(dir, name));
 }
 
+/** The files directly inside `dir` (not subfolders). Returns [] if `dir` is missing. */
+export function filesIn(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .map((name) => join(dir, name))
+    .filter((path) => statSync(path).isFile());
+}
+
 /** Files tracked by git, or undefined if `root` isn't a git repository. */
 export function gitTrackedFiles(root: string): string[] | undefined {
   try {

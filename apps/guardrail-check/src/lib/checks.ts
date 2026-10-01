@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import {
+  filesIn,
   gitTrackedFiles,
   markdownFiles,
   parseJsonc,
@@ -147,19 +148,22 @@ export const worktreeConvention: Check = {
   id: 'worktree-convention',
   title: 'One-worktree-per-agent convention is documented',
   run(root) {
-    const docs = [
+    // Look for the actual command, not just the words "git worktree": a plan that says
+    // "agents get their own worktree" doesn't tell anyone how to make one.
+    const candidates = [
       join(root, 'AGENTS.md'),
       ...markdownFiles(join(root, 'docs')),
+      ...filesIn(join(root, 'scripts')),
     ];
-    const found = docs.find((path) =>
-      /git worktree/i.test(readIfExists(path) ?? ''),
+    const found = candidates.find((path) =>
+      /git worktree add/i.test(readIfExists(path) ?? ''),
     );
     return found
       ? result(this, true, `Documented in ${found.slice(root.length + 1)}.`)
       : result(
           this,
           false,
-          'Neither AGENTS.md nor docs/ mentions "git worktree".',
+          'No doc or script in AGENTS.md, docs/ or scripts/ shows how to create one ("git worktree add").',
         );
   },
 };

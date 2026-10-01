@@ -150,8 +150,27 @@ describe('worktree-convention', () => {
     });
   });
 
+  it('passes when a script under scripts/ creates worktrees', () => {
+    repo = new FixtureRepo().write(
+      'scripts/new-agent.sh',
+      'git worktree add --relative-paths "$path"\n',
+    );
+    expect(worktreeConvention.run(repo.root)).toMatchObject({
+      passed: true,
+      detail: 'Documented in scripts/new-agent.sh.',
+    });
+  });
+
   it('fails when nothing mentions git worktree', () => {
     repo = new FixtureRepo().write('AGENTS.md', '# Agents\n');
+    expect(worktreeConvention.run(repo.root).passed).toBe(false);
+  });
+
+  it('fails when a doc names worktrees but never shows how to make one', () => {
+    repo = new FixtureRepo().write(
+      'docs/plan.md',
+      'Each agent gets its own git worktree.\n',
+    );
     expect(worktreeConvention.run(repo.root).passed).toBe(false);
   });
 });

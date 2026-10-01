@@ -4,10 +4,10 @@ name: devcontainer
 
 on:
   pull_request:
-    paths: ['.devcontainer/**', '.github/workflows/devcontainer.yml']
+    paths: ['.devcontainer/**', '.github/workflows/devcontainer.yml', 'scripts/agent-worktree.sh']
   push:
     branches: [main]
-    paths: ['.devcontainer/**', '.github/workflows/devcontainer.yml']
+    paths: ['.devcontainer/**', '.github/workflows/devcontainer.yml', 'scripts/agent-worktree.sh']
   workflow_dispatch:
 
 permissions:
@@ -98,3 +98,24 @@ jobs:
           path=$(npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . git config --get core.hooksPath)
           if [ "$path" != ".githooks" ]; then echo "core.hooksPath is '$path', expected .githooks"; exit 1; fi
           echo "npm ci enabled the hooks (core.hooksPath=$path)"
+
+      # One worktree per agent (Story 2.6): a second agent gets its own checkout and its own
+      # sandbox. The sandbox checks must still pass there, and a commit made inside must land
+      # on the agent's branch without touching the main checkout.
+      - name: Agent worktree gets its own sandbox
+        run: |
+          git --version
+          head_before=$(git rev-parse HEAD)
+          scripts/agent-worktree.sh new ci-agent
+          wt="$(dirname "$PWD")/$(basename "$PWD").worktrees/ci-agent"
+          dc() { npx --yes @devcontainers/cli@0.89.0 "$@" --workspace-folder "$wt" --mount-git-worktree-common-dir; }
+          start=$(date +%s)
+          dc up > /dev/null
+          echo "worktree devcontainer up took $(( $(date +%s) - start ))s"
+          dc exec bash .devcontainer/verify-sandbox.sh
+          dc exec bash -c 'echo "from the agent" > agent-note.txt && git add agent-note.txt &&
+            git -c user.name=ci -c user.email=ci@example.invalid commit -q -m "agent commit" && git log --oneline -1'
+          test "$(git log -1 --format=%s agent/ci-agent)" = "agent commit"
+          test ! -e agent-note.txt
+          test "$(git rev-parse HEAD)" = "$head_before"
+          echo "commit landed on agent/ci-agent; main checkout untouched"

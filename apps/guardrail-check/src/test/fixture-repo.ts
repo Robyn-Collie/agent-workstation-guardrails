@@ -35,7 +35,7 @@ export function compliantRepo(): FixtureRepo {
   return new FixtureRepo()
     .write(
       'AGENTS.md',
-      '# Agents\n\nEach agent works in its own `git worktree`.\n',
+      '# Agents\n\nEach agent works in its own worktree: `git worktree add ../agent-2`.\n',
     )
     .write(
       '.githooks/pre-commit',
