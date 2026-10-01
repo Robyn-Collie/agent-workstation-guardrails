@@ -4,10 +4,20 @@ name: devcontainer
 
 on:
   pull_request:
-    paths: ['.devcontainer/**', '.github/workflows/devcontainer.yml', 'scripts/agent-worktree.sh']
+    paths:
+      [
+        '.devcontainer/**',
+        '.github/workflows/devcontainer.yml',
+        'scripts/agent-worktree.sh',
+      ]
   push:
     branches: [main]
-    paths: ['.devcontainer/**', '.github/workflows/devcontainer.yml', 'scripts/agent-worktree.sh']
+    paths:
+      [
+        '.devcontainer/**',
+        '.github/workflows/devcontainer.yml',
+        'scripts/agent-worktree.sh',
+      ]
   workflow_dispatch:
 
 permissions:
