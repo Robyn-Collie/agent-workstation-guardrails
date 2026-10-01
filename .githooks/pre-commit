@@ -1,0 +1,4 @@
+#!/bin/sh
+# Block a commit that would add a secret. Scans what is staged (the index), which is
+# exactly what the commit will contain. Enabled by `npm install` (see package.json).
+exec "$(dirname "$0")/run-secret-scan" --staged

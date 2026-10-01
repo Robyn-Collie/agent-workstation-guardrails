@@ -92,3 +92,9 @@ jobs:
 
       - name: Toolchain works inside the sandbox
         run: npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . npx nx run-many -t lint typecheck test
+
+      - name: Git hooks are enabled inside the sandbox
+        run: |
+          path=$(npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . git config --get core.hooksPath)
+          if [ "$path" != ".githooks" ]; then echo "core.hooksPath is '$path', expected .githooks"; exit 1; fi
+          echo "npm ci enabled the hooks (core.hooksPath=$path)"

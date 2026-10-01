@@ -2,7 +2,9 @@
   "name": "@agent-workstation-guardrails/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true"
+  },
   "private": true,
   "devDependencies": {
     "@eslint/js": "^9.8.0",

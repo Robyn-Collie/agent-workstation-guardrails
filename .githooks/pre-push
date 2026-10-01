@@ -1,0 +1,5 @@
+#!/bin/sh
+# Block a push that would send a secret. Scans every commit being pushed, so a secret
+# committed with --no-verify, or committed and deleted later, is still caught.
+# Git passes the refs being pushed on stdin; the scanner reads them from there.
+exec "$(dirname "$0")/run-secret-scan" --pre-push
