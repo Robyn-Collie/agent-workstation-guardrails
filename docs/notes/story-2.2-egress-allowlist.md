@@ -103,10 +103,15 @@ place.
   as the first CI run showed for GitHub. GitHub is covered by its published ranges; the others aren't.
   If a registry call starts failing mid-session, restart the container to re-resolve. I haven't measured
   how often that happens.
-- **GitHub's ranges depend on one unauthenticated API call.** If `api.github.com/meta` fails (its
-  unauthenticated rate limit is per IP address), the firewall logs a warning and starts with the
-  looked-up addresses only. It doesn't refuse to start, because blocking all work over a rate limit
-  seemed worse; `verify-egress.sh` would show the result.
+- **GitHub's ranges are a copy.** _Updated 2026-10-02._ The first version fetched them from
+  `api.github.com/meta` inside the container at start. On 2026-10-02 that fetch failed in CI
+  ([run 36943728991](https://github.com/Robyn-Collie/agent-workstation-guardrails/actions/runs/36943728991)),
+  most likely GitHub's unauthenticated rate limit, which is per IP address and shared on CI runners.
+  The firewall fell back to single lookups and GitHub was refused, the same failure as the first run.
+  GitHub's main ranges are now listed in `egress-allowlist.txt`, and the container no longer makes
+  that call. CI resolves GitHub's hostnames several times each run and fails if any address falls
+  outside the listed ranges. It also reports how much of GitHub's full published list they cover; that
+  list includes many single addresses for regional services this sandbox doesn't use.
 - **Shared CDN addresses.** An allowed address may also serve other sites on the same CDN. The filter
   works on IP addresses, not hostnames.
 - **Untested in VS Code.** The VS Code Dev Containers extension installs its server and extensions from

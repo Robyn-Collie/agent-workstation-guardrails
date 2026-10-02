@@ -54,43 +54,34 @@ table inet agent_egress {
 }
 NFT
 
-# Step 2: resolve each allowlisted host (DNS already works) and add its addresses.
+# Step 2: add each allowlist entry. A line with "/" is an address range (CIDR), added as
+# is. Anything else is a hostname: resolve it (DNS already works) and add its addresses.
 hosts=0
-while read -r host; do
-  v4=$(getent ahostsv4 "$host" | awk '{print $1}' | sort -u | paste -sd, - || true)
-  v6=$(getent ahostsv6 "$host" | awk '$1 ~ /:/ && $1 !~ /^::ffff:/ {print $1}' | sort -u | paste -sd, - || true)
+ranges=0
+while read -r entry; do
+  if [[ "$entry" == */* ]]; then
+    if [[ "$entry" == *:* ]]; then set_name=allow_v6; else set_name=allow_v4; fi
+    nft add element inet agent_egress "$set_name" "{ $entry }"
+    ranges=$((ranges + 1))
+    continue
+  fi
+  v4=$(getent ahostsv4 "$entry" | awk '{print $1}' | sort -u | paste -sd, - || true)
+  v6=$(getent ahostsv6 "$entry" | awk '$1 ~ /:/ && $1 !~ /^::ffff:/ {print $1}' | sort -u | paste -sd, - || true)
   if [ -z "$v4$v6" ]; then
-    log "cannot resolve $host"
+    log "cannot resolve $entry"
     exit 1
   fi
   if [ -n "$v4" ]; then nft add element inet agent_egress allow_v4 "{ $v4 }"; fi
   if [ -n "$v6" ]; then nft add element inet agent_egress allow_v6 "{ $v6 }"; fi
-  log "$host -> ${v4:-} ${v6:-}"
+  log "$entry -> ${v4:-} ${v6:-}"
   hosts=$((hosts + 1))
 done < <(sed -e 's/#.*//' -e 's/[[:space:]]//g' "$ALLOWLIST" | grep -v '^$')
 
 # A failure inside "< <(...)" does not stop the script, so check the result directly.
-if [ "$hosts" -eq 0 ]; then
-  log "allowlist $ALLOWLIST has no hosts"
+if [ $((hosts + ranges)) -eq 0 ]; then
+  log "allowlist $ALLOWLIST has no hosts or ranges"
   exit 1
 fi
 
-# Step 3: GitHub serves the same name from several addresses, so one lookup can miss the
-# address the next request uses. (The first CI run saw api.github.com refused a second
-# after it was allowed.) GitHub publishes its ranges at api.github.com/meta; add
-# the web, api and git ranges. --resolve pins the request to the address just allowed.
-# If the fetch fails (for example GitHub's unauthenticated rate limit), keep going with
-# the looked-up addresses and say so, rather than refuse to start.
-gh_ip=$(getent ahostsv4 api.github.com | awk 'NR == 1 {print $1}' || true)
-if meta=$(curl -fsS --max-time 10 --resolve "api.github.com:443:$gh_ip" https://api.github.com/meta); then
-  gh4=$(jq -r '(.web + .api + .git)[] | select(contains(":") | not)' <<<"$meta" | sort -u | paste -sd, -)
-  gh6=$(jq -r '(.web + .api + .git)[] | select(contains(":"))' <<<"$meta" | sort -u | paste -sd, -)
-  if [ -n "$gh4" ]; then nft add element inet agent_egress allow_v4 "{ $gh4 }"; fi
-  if [ -n "$gh6" ]; then nft add element inet agent_egress allow_v6 "{ $gh6 }"; fi
-  log "added GitHub's published ranges ($(tr ',' '\n' <<<"$gh4,$gh6" | grep -c .) CIDRs)"
-else
-  log "WARNING: could not fetch GitHub's ranges; GitHub may fail when its address rotates"
-fi
-
 touch "$READY"
-log "ready: $hosts hosts allowed, took $(( ($(date +%s%N) - started) / 1000000 )) ms"
+log "ready: $hosts hosts and $ranges ranges allowed, took $(( ($(date +%s%N) - started) / 1000000 )) ms"
