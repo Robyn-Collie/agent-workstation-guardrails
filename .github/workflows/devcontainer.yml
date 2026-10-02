@@ -28,6 +28,21 @@ jobs:
 
       # A throwaway value, new every run, masked in the logs. Being random, it can only turn
       # up in the image or container if the setup put it there.
+      # The allowlist carries a copy of GitHub's published address ranges; fail if GitHub
+      # has added one since. Runs on the runner with its own token, so the API's
+      # unauthenticated rate limit doesn't apply. The token never enters the container.
+      - name: Allowlist covers GitHub's published ranges
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsS -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/meta \
+            | jq -r '(.web + .api + .git)[]' | sort -u > published.txt
+          missing=$(grep -vxFf <(sed 's/#.*//; s/[[:space:]]//g' .devcontainer/egress-allowlist.txt) published.txt || true)
+          if [ -n "$missing" ]; then
+            echo "Add these GitHub ranges to .devcontainer/egress-allowlist.txt:"; echo "$missing"; exit 1
+          fi
+          echo "all $(wc -l < published.txt) published GitHub ranges are on the allowlist"
+
       - name: Make a fake model API key for this run
         run: |
           key="fake-$(openssl rand -hex 16)"
