@@ -154,7 +154,9 @@ jobs:
           head_before=$(git rev-parse HEAD)
           scripts/agent-worktree.sh new ci-agent
           wt="$(dirname "$PWD")/$(basename "$PWD").worktrees/ci-agent"
-          dc() { npx --yes @devcontainers/cli@0.89.0 "$@" --workspace-folder "$wt" --mount-git-worktree-common-dir; }
+          # Options go between the subcommand and its arguments: after `exec <cmd>` they'd be
+          # passed to <cmd>, and the CLI would fall back to the main checkout's container.
+          dc() { npx --yes @devcontainers/cli@0.89.0 "$1" --workspace-folder "$wt" --mount-git-worktree-common-dir "${@:2}"; }
           start=$(date +%s)
           dc up > /dev/null
           echo "worktree devcontainer up took $(( $(date +%s) - start ))s"
