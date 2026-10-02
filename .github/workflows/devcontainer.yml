@@ -28,6 +28,42 @@ jobs:
 
       # A throwaway value, new every run, masked in the logs. Being random, it can only turn
       # up in the image or container if the setup put it there.
+      # The allowlist carries GitHub's main address ranges instead of looking them up at
+      # start. Check they still cover what GitHub's names resolve to, several lookups each,
+      # since one lookup returns one address. Also report how much of GitHub's published
+      # list they cover (it includes many single addresses for regional services this
+      # sandbox doesn't use). Runs on the runner, with its own token for the API.
+      - name: Allowlist covers GitHub's addresses
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsS -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/meta > meta.json
+          python3 - <<'PY'
+          import ipaddress, json, socket
+          allowed = [ipaddress.ip_network(line.split("#")[0].strip())
+                     for line in open(".devcontainer/egress-allowlist.txt")
+                     if "/" in line.split("#")[0]]
+          def covered(addr):
+              ip = ipaddress.ip_address(addr)
+              return any(ip in net for net in allowed if net.version == ip.version)
+          hosts = ["github.com", "api.github.com", "codeload.github.com",
+                   "objects.githubusercontent.com", "raw.githubusercontent.com"]
+          seen = {h: set() for h in hosts}
+          for _ in range(5):
+              for h in hosts:
+                  seen[h] |= {a[4][0] for a in socket.getaddrinfo(h, 443, proto=socket.IPPROTO_TCP)}
+          missing = {h: sorted(a for a in addrs if not covered(a)) for h, addrs in seen.items()}
+          for h, addrs in seen.items():
+              print(f"{h}: {', '.join(sorted(addrs))}")
+          meta = json.load(open("meta.json"))
+          published = {ipaddress.ip_network(c) for k in ("web", "api", "git") for c in meta[k]}
+          inside = sum(any(p.subnet_of(n) for n in allowed if n.version == p.version) for p in published)
+          print(f"published web/api/git ranges covered: {inside} of {len(published)}")
+          if any(missing.values()):
+              raise SystemExit(f"not covered by the allowlist: {missing}")
+          print("every GitHub address seen is inside an allowlisted range")
+          PY
+
       - name: Make a fake model API key for this run
         run: |
           key="fake-$(openssl rand -hex 16)"
