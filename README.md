@@ -13,7 +13,7 @@ Written from scratch on personal time with public tools and public or synthetic 
 ## What works today
 
 - An Nx workspace (TypeScript, strict `tsconfig`, ESLint, Prettier, Vitest).
-- `guardrail-check`: a CLI that audits a repo against the standard (22 tests).
+- `guardrail-check`: a CLI that audits a repo against the standard (24 tests).
 - `secret-scan`: a zero-dependency Python secret scanner (39 tests, including one that scans this repo
   and must find nothing).
 - Git hooks that run it before code leaves the machine: pre-commit scans what's staged, pre-push scans
@@ -30,6 +30,9 @@ Written from scratch on personal time with public tools and public or synthetic 
   plus the container, for the key; CI runs it with a random fake key, and also on an image that hides
   the key in a deleted layer, which it must catch. The standard behind all of this is in
   [docs/standard.md](docs/standard.md).
+- One git worktree per agent, each in its own sandbox: `scripts/agent-worktree.sh` creates them
+  ([docs/worktrees.md](docs/worktrees.md)). CI starts a sandbox in a new worktree, commits from inside
+  it, and checks the main checkout is untouched. Creating a worktree took 0.14 s (one local run).
 
 ## Measured
 

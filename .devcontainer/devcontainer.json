@@ -12,9 +12,10 @@
   "overrideCommand": false,
 
   // Mount only this repo. No "mounts" entries: nothing else from the host (no ~/.ssh,
-  // ~/.aws, ~/.config, Docker socket) is visible inside.
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
-  "workspaceFolder": "/workspace",
+  // ~/.aws, ~/.config, Docker socket) is visible inside. The repo goes where the
+  // devcontainer CLI (and Codespaces) put it by default, /workspaces/<folder name>. For an
+  // agent worktree, `--mount-git-worktree-common-dir` adds the main repo's .git folder so
+  // git works; see docs/worktrees.md. verify-sandbox.sh checks nothing else is mounted.
 
   // Drop all Linux capabilities and forbid gaining new privileges (setuid binaries like
   // sudo stop working even if someone reinstalls them). Add back only what the entrypoint
@@ -35,7 +36,7 @@
   // Project dependencies, installed inside the container, never copied from the host.
   "postCreateCommand": "npm ci && python3 -m venv .venv && .venv/bin/pip install --quiet pytest==9.1.1",
   "remoteEnv": {
-    "PATH": "/workspace/.venv/bin:${containerEnv:PATH}",
+    "PATH": "${containerWorkspaceFolder}/.venv/bin:${containerEnv:PATH}",
     // The agent's model API key, read from the host's environment each time a command
     // starts in the container. Never "containerEnv" or a build arg: those store the value
     // in the container's or image's metadata. Set it on the host from a secret store; see

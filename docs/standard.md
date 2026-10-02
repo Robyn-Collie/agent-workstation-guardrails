@@ -111,8 +111,13 @@ A zero-dependency scanner runs as a pre-commit hook and again as a pre-push hook
 
 Parallel agents each get their own git worktree, so they never edit the same checkout.
 
-- **Here:** `guardrail-check` has a rule that the convention is documented.
-- **Not yet:** the convention itself and a helper script. That's Story 2.6.
+- **Here:** [docs/worktrees.md](worktrees.md) sets the convention: one worktree and one `agent/<name>`
+  branch per agent, each in its own sandbox. `scripts/agent-worktree.sh` creates and removes them.
+  `guardrail-check` fails a repo that doesn't document the command.
+- **Proof:** CI creates a worktree, starts a sandbox in it, runs the sandbox checks there, commits from
+  inside, and confirms the main checkout is untouched
+  ([Story 2.6 notes](notes/story-2.6-worktree-convention.md)).
+- **Limit:** the worktrees share one `.git` folder, which every agent can read and write.
 
 ## 6. Read-only by default
 

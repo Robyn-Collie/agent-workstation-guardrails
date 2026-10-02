@@ -1,6 +1,7 @@
-# Outbound HTTPS (port 443) is allowed to these hosts only. Everything else is refused.
-# One hostname per line; "#" starts a comment. Hosts are resolved once, at container
-# start, so an edit here takes effect on the next rebuild or restart.
+# Outbound HTTPS (port 443) is allowed to these hosts and address ranges only. Everything
+# else is refused. One hostname or CIDR range per line; "#" starts a comment. Hosts are
+# resolved once, at container start, so an edit here takes effect on the next rebuild or
+# restart.
 
 # Package registries: npm ci and pip install run inside the container.
 registry.npmjs.org
@@ -13,6 +14,17 @@ api.github.com
 codeload.github.com
 objects.githubusercontent.com
 raw.githubusercontent.com
+
+# GitHub serves each name from many addresses and a lookup returns only one, so the next
+# request can land on an address the firewall never saw. These are GitHub's main ranges
+# from its published list (https://api.github.com/meta). CI resolves GitHub's names
+# several times on every run and fails if any address falls outside them.
+140.82.112.0/20
+143.55.64.0/20
+185.199.108.0/22
+192.30.252.0/22
+2606:50c0::/32
+2a0a:a440::/29
 
 # The model API the coding agent talks to.
 api.anthropic.com
