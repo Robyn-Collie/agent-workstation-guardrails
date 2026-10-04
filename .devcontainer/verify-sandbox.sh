@@ -28,9 +28,20 @@ if [ -z "${SSH_AUTH_SOCK:-}" ]; then pass "no SSH agent forwarded"; else fail "S
 helper=$(git config --get credential.helper 2>/dev/null || true)
 if [ -z "$helper" ]; then pass "no git credential helper"; else fail "git credential helper configured: $helper"; fi
 
-# 4. Only the workspace is bind-mounted from the host.
-binds=$(awk '$4 != "/" && $5 !~ "^/(proc|sys|dev)" {print $5}' /proc/self/mountinfo | grep -vE '^/(proc|sys|dev)(/|$)|^/etc/(hosts|hostname|resolv.conf)$' || true)
-if [ "$binds" = "/workspace" ]; then pass "only /workspace is mounted from the host"; else fail "host mounts besides /workspace: $(echo "$binds" | tr '\n' ' ')"; fi
+# 4. Only the repo is bind-mounted from the host: the workspace folder, plus, for an agent
+# worktree, the main repo's .git folder (shared by all worktrees). Run from the workspace.
+top=$(git rev-parse --show-toplevel 2>/dev/null || true)
+common=$(cd "$(git rev-parse --git-common-dir 2>/dev/null || echo /nonexistent)" 2>/dev/null && pwd -P || true)
+allowed=$top
+case "$common" in "$top"/* | "") ;; *) allowed=$(printf '%s\n%s' "$top" "$common") ;; esac
+binds=$(awk '$4 != "/" && $5 !~ "^/(proc|sys|dev)" {print $5}' /proc/self/mountinfo | grep -vE '^/(proc|sys|dev)(/|$)|^/etc/(hosts|hostname|resolv.conf)$' | sort || true)
+if [ -z "$top" ]; then
+  fail "not inside a git repository, so the mount can't be checked (run from the workspace)"
+elif [ "$binds" = "$(sort <<<"$allowed")" ]; then
+  pass "only the repo is mounted from the host: $(echo "$binds" | tr '\n' ' ')"
+else
+  fail "host mounts other than the repo: $(comm -23 <(echo "$binds") <(sort <<<"$allowed") | tr '\n' ' ')"
+fi
 
 echo
 if [ "$failures" -eq 0 ]; then echo "sandbox: all checks passed"; else echo "sandbox: $failures check(s) failed"; fi
