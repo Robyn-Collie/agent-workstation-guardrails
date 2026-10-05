@@ -94,6 +94,11 @@ place.
 
 ## Limits, honestly
 
+- **It needs the container's own network.** With `--network host`, which GitHub Codespaces adds, the
+  rules would apply to the host itself. The first Codespaces test (2026-10-05) did exactly that: the
+  firewall blocked the Codespace's own traffic and creation failed. The script now refuses to load
+  (exit 3) when it sees a host interface, so the container doesn't start, and CI checks the refusal.
+  _Added 2026-10-05._
 - **Allowed hosts are allowed for everything.** GitHub is on the list, so an agent could push code to any
   GitHub repo or gist it can authenticate to. The allowlist narrows where data can go; it doesn't make
   those places safe. Keeping tokens out of the container (Story 2.1, 2.3) is the other half.

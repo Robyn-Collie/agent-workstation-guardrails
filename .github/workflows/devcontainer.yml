@@ -136,7 +136,18 @@ jobs:
           fi
           echo "verify-egress.sh failed without the firewall, as expected"
 
-      - name: Toolchain works inside the sandbox
+      - name: Firewall refuses to load on the host's network
+        # No NET_ADMIN here, so even if the check failed the rules couldn't reach the runner.
+        run: |
+          image=$(docker inspect -f '{{.Image}}' "$CONTAINER_ID")
+          set +e
+          out=$(docker run --rm --network host --user root --entrypoint /usr/local/bin/egress-firewall.sh "$image" 2>&1)
+          code=$?
+          set -e
+          echo "$out"
+          test "$code" = 3
+          grep -q "refusing to load" <<<"$out"
+
         run: npx --yes @devcontainers/cli@0.89.0 exec --workspace-folder . npx nx run-many -t lint typecheck test
 
       - name: Git hooks are enabled inside the sandbox

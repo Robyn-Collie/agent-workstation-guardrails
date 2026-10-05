@@ -16,6 +16,20 @@ if [ ! -r "$ALLOWLIST" ]; then
   exit 1
 fi
 
+# Refuse to run in the host's network namespace (docker run --network host, which
+# GitHub Codespaces adds). There these rules would firewall the host itself, not the
+# sandbox. A container's own namespace has only lo and the container end of a veth pair,
+# whose iflink names its peer. A host has interfaces that are their own link (a NIC, a
+# bridge), so iflink equals ifindex.
+for dev in /sys/class/net/*; do
+  name=${dev##*/}
+  [ "$name" = lo ] && continue
+  if [ "$(cat "$dev/iflink")" = "$(cat "$dev/ifindex")" ]; then
+    log "refusing to load: $name looks like a host interface, so this container shares the host's network"
+    exit 3
+  fi
+done
+
 # DNS is allowed only to the resolvers Docker wrote into resolv.conf.
 dns4=$(awk '$1 == "nameserver" && $2 !~ /:/ {printf "%s%s", sep, $2; sep=", "}' /etc/resolv.conf)
 dns6=$(awk '$1 == "nameserver" && $2 ~ /:/ {printf "%s%s", sep, $2; sep=", "}' /etc/resolv.conf)
