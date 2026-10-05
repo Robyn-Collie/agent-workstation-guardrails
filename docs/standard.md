@@ -23,6 +23,8 @@ network limited to an allowlist.
   firewall that allows HTTPS only to the hosts in `.devcontainer/egress-allowlist.txt`.
 - **Proof:** `verify-sandbox.sh` and `verify-egress.sh` in CI, each with a negative control
   ([Story 2.1](notes/story-2.1-devcontainer.md), [Story 2.2](notes/story-2.2-egress-allowlist.md)).
+- **Limit:** the firewall needs the container's own network. Where a host forces host networking, as
+  GitHub Codespaces does, the sandbox refuses to start ([Story 2.5](notes/story-2.5-codespaces.md)).
 
 ## 3. Secrets tiers, injected at run time
 
