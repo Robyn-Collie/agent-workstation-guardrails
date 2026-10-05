@@ -24,7 +24,8 @@ Written from scratch on personal time with public tools and public or synthetic 
 - A default-deny egress firewall in that devcontainer: outbound HTTPS only to npm, PyPI, GitHub and the
   model API. `.devcontainer/verify-egress.sh` proves a blocked domain is refused, an allowed one works,
   and the agent can't change the rules; CI also runs it without the firewall and requires it to fail.
-  Designed and tested with the `devcontainer` CLI; not yet tested in VS Code.
+  Designed and tested with the `devcontainer` CLI; not yet tested in VS Code. It refuses to start in
+  GitHub Codespaces, which forces host networking ([why](docs/notes/story-2.5-codespaces.md)).
 - The agent's model API key is injected at run time, never stored in the image or container.
   `.devcontainer/check-no-baked-secret.sh` searches the image's history, metadata and every layer,
   plus the container, for the key; CI runs it with a random fake key, and also on an image that hides
